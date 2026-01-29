@@ -1,0 +1,688 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Sulfide Detoxification & Cumulative Cost Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* Header - Texas A&M Style */
+        header { border-bottom: 3px solid #500000; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: #500000; margin: 0; font-size: 2rem; }
+        .subtitle { font-size: 1.1rem; color: #7f8c8d; margin-top: 5px; }
+        .context-badge { display: inline-block; background: #500000; color: white; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Layout */
+        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 30px; }
+        
+        /* Controls */
+        .controls { background: #f8f9fa; padding: 25px; border-radius: 8px; border: 1px solid #e9ecef; height: fit-content; position: sticky; top: 20px; }
+        .control-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; color: #2c3e50; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #500000; height: 6px; }
+        .value-display { float: right; color: #500000; font-weight: bold; font-family: monospace; font-size: 0.95rem; }
+        .sub-label { font-size: 0.75rem; color: #7f8c8d; display: block; margin-top: 4px; line-height: 1.4; }
+        hr { border: 0; border-top: 1px solid #ddd; margin: 20px 0; }
+        
+        .section-header { color: #7f8c8d; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; margin: 20px 0 15px 0; font-weight: 700; }
+        
+        /* Results & KPIs */
+        .results { display: flex; flex-direction: column; gap: 25px; }
+        
+        .warning-box { background: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; border-radius: 4px; display: none; margin-bottom: 20px; }
+        .warning-text { color: #856404; font-size: 0.9rem; line-height: 1.5; }
+        .warning-box.critical { background: #f8d7da; border-left-color: #dc3545; }
+        .warning-box.critical .warning-text { color: #721c24; }
+
+        /* KPI Grid - Daily Metrics */
+        .kpi-box { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .kpi { background: #ecf0f1; padding: 12px 15px; border-radius: 6px; text-align: center; border: 1px solid #dee2e6; position: relative; }
+        .kpi::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #95a5a6; }
+        .kpi h3 { margin: 0 0 5px 0; font-size: 0.7rem; text-transform: uppercase; color: #7f8c8d; letter-spacing: 0.5px; font-weight: 700; }
+        .kpi .num { font-size: 1.3rem; font-weight: bold; color: #2c3e50; }
+        .kpi .unit { font-size: 0.75rem; color: #95a5a6; margin-top: 2px; }
+        .highlight { background: #ffe8e8; border-color: #ffcccc; }
+        .highlight::before { background: #e74c3c; }
+        .highlight .num { color: #e74c3c; }
+
+        /* Cumulative Impact Section */
+        .cumulative-section { background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%); border: 2px solid #500000; border-radius: 8px; padding: 20px; margin-top: 25px; }
+        .cumulative-section h3 { color: #500000; margin: 0 0 15px 0; font-size: 1.1rem; }
+        
+        .cumulative-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 15px; }
+        .cumulative-kpi { background: white; border: 1px solid #ffcccc; border-radius: 6px; padding: 12px; text-align: center; position: relative; }
+        .cumulative-kpi::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #500000; }
+        .cumulative-kpi .label { font-size: 0.7rem; text-transform: uppercase; color: #666; font-weight: 700; }
+        .cumulative-kpi .value { font-size: 1.4rem; font-weight: 800; color: #500000; margin: 5px 0; }
+        .cumulative-kpi .subtext { font-size: 0.7rem; color: #888; }
+        .money-kpi::before { background: #2e7d32; }
+        .money-kpi .value { color: #2e7d32; }
+
+        /* Charts */
+        .chart-container { position: relative; height: 280px; background: white; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .chart-container.tall { height: 350px; }
+        
+        /* Equation Box */
+        .equation-section { background-color: #eef9f9; border: 1px solid #b2dfdb; padding: 20px; border-radius: 8px; }
+        .equation-section h4 { margin: 0 0 15px 0; color: #009688; font-size: 1rem; }
+        .math-step { font-family: 'Courier New', Courier, monospace; margin-bottom: 10px; border-bottom: 1px dashed #b2dfdb; padding-bottom: 5px; font-size: 0.85rem; line-height: 1.4; }
+        .math-step:last-child { border-bottom: none; }
+        .math-res { color: #009688; font-weight: bold; }
+        
+        /* Logic Box */
+        .logic-box { background: #fff8f8; border: 2px solid #500000; border-left-width: 5px; padding: 18px; border-radius: 8px; margin-top: 20px; }
+        .logic-title { color: #500000; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; margin-bottom: 10px; display: block; }
+        .logic-box p { margin: 0; line-height: 1.6; font-size: 0.9rem; color: #333; }
+        .logic-box strong { color: #500000; }
+        
+        /* References Section */
+        .references { margin-top: 50px; border-top: 2px solid #eee; padding-top: 25px; }
+        .references h3 { font-size: 1.1rem; color: #500000; margin-bottom: 15px; }
+        .ref-list { list-style-type: none; padding: 0; font-size: 0.85rem; color: #555; }
+        .ref-list li { margin-bottom: 12px; padding-left: 20px; text-indent: -20px; line-height: 1.5; }
+        .ref-list strong { color: #333; }
+        .ref-note { display: inline-block; background: #e8f4f8; font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; margin-left: 8px; color: #0c5460; }
+        
+        .assumptions-box { margin-top: 25px; padding: 18px; background: #f8f9fa; border-left: 4px solid #500000; border-radius: 4px; }
+        .assumptions-box strong { color: #500000; }
+        .assumptions-box ul { margin: 10px 0 0 20px; font-size: 0.85rem; color: #555; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🔬 Integrated Sulfide Detoxification & Cumulative Cost Model</h1>
+        <div class="subtitle">Daily Metabolic Burden + Long-Term Production Impact Analysis</div>
+        <div class="context-badge">Texas A&M AgriLife Extension</div>
+    </header>
+    
+    <div class="grid">
+        <!-- Controls -->
+        <div class="controls">
+            <h3 style="margin-top:0; border-bottom: 2px solid #500000; padding-bottom: 10px; color: #500000;">Input Parameters</h3>
+            
+            <div class="section-header">Animal & Diet</div>
+            
+            <div class="control-group">
+                <label>Steer Body Weight <span id="val_bw" class="value-display"></span></label>
+                <input type="range" id="bw" min="200" max="700" step="10" value="400" oninput="updateModel()">
+            </div>
+            <div class="control-group">
+                <label>Dry Matter Intake <span id="val_dmi" class="value-display"></span></label>
+                <input type="range" id="dmi" min="5" max="15" step="0.5" value="10" oninput="updateModel()">
+            </div>
+            <div class="control-group">
+                <label>Dietary Sulfur (% DM) <span id="val_feedS" class="value-display"></span></label>
+                <input type="range" id="feedS" min="0.1" max="1.0" step="0.05" value="0.50" oninput="updateModel()">
+                <span class="sub-label">Recommended max: 0.40% (NASEM 2016). DDGS: 0.7-1.0%</span>
+            </div>
+            <div class="control-group">
+                <label>Water Sulfate (mg/L) <span id="val_waterS" class="value-display"></span></label>
+                <input type="range" id="waterS" min="0" max="4000" step="100" value="2000" oninput="updateModel()">
+                <span class="sub-label">TX ranges: 300-4000 mg/L. West TX often >2000 mg/L</span>
+            </div>
+            <div class="control-group">
+                <label>Water Intake <span id="val_waterIn" class="value-display"></span></label>
+                <input type="range" id="waterIn" min="20" max="100" step="5" value="50" oninput="updateModel()">
+                <span class="sub-label">Typically 2-4× DMI</span>
+            </div>
+
+            <div class="section-header">Physiological Parameters</div>
+
+            <div class="control-group">
+                <label>Rumen Reduction Rate <span id="val_reduction" class="value-display"></span></label>
+                <input type="range" id="reduction" min="30" max="90" step="5" value="70" oninput="updateModel()">
+                <span class="sub-label">% SO₄²⁻ reduced to H₂S. Higher with fermentable carbs</span>
+            </div>
+
+            <div class="control-group">
+                <label>H₂S Absorption Rate <span id="val_abs" class="value-display"></span></label>
+                <input type="range" id="abs" min="30" max="80" step="5" value="60" oninput="updateModel()">
+                <span class="sub-label">% absorbed across epithelium (pH dependent)</span>
+            </div>
+
+            <div class="control-group">
+                <label>Oxidation Efficiency <span id="val_ox" class="value-display"></span></label>
+                <input type="range" id="ox" min="70" max="100" step="1" value="95" oninput="updateModel()">
+                <span class="sub-label">% complete oxidation to SO₄²⁻</span>
+            </div>
+
+            <div class="section-header">Production Timeline</div>
+
+            <div class="control-group">
+                <label>Days on Feed <span id="val_days" class="value-display"></span></label>
+                <input type="range" id="days_on_feed" min="60" max="250" step="10" value="180" oninput="updateModel()">
+                <span class="sub-label">Duration of sulfur exposure</span>
+            </div>
+
+            <div class="section-header">Market Economics</div>
+
+            <div class="control-group">
+                <label>Live Cattle Price <span id="val_price" class="value-display"></span></label>
+                <input type="range" id="live_price" min="2.00" max="6.00" step="0.05" value="4.08" oninput="updateModel()">
+                <span class="sub-label">$/kg (~$1.85/lb typical)</span>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results">
+            <div class="warning-box" id="warning-box">
+                <strong>⚠ Sulfur Toxicity Risk</strong><br>
+                <span id="warning-text" class="warning-text"></span>
+            </div>
+
+            <h3 style="margin: 0; color: #500000; border-bottom: 2px solid #500000; padding-bottom: 8px;">Daily Metabolic Burden</h3>
+
+            <!-- Daily KPIs -->
+            <div class="kpi-box">
+                <div class="kpi">
+                    <h3>Total S Intake</h3>
+                    <div class="num" id="res_totalS">0</div>
+                    <div class="unit">g S/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>Rumen H₂S</h3>
+                    <div class="num" id="res_rumen">0</div>
+                    <div class="unit">g S/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>Absorbed H₂S</h3>
+                    <div class="num" id="res_absorbed">0</div>
+                    <div class="unit">g S/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>O₂ Consumed</h3>
+                    <div class="num" id="res_o2">0</div>
+                    <div class="unit">L O₂/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>Heat Produced</h3>
+                    <div class="num" id="res_heat_raw">0</div>
+                    <div class="unit">Mcal/day</div>
+                </div>
+                <div class="kpi highlight">
+                    <h3>Daily NE Cost</h3>
+                    <div class="num" id="res_heat">0</div>
+                    <div class="unit">Mcal NEm/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>Base NEm</h3>
+                    <div class="num" id="res_base">0</div>
+                    <div class="unit">Mcal/day</div>
+                </div>
+                <div class="kpi">
+                    <h3>Total NEm</h3>
+                    <div class="num" id="res_total">0</div>
+                    <div class="unit">Mcal/day</div>
+                </div>
+                <div class="kpi highlight">
+                    <h3>% Increase</h3>
+                    <div class="num" id="res_pct">0</div>
+                    <div class="unit">NEm increase</div>
+                </div>
+            </div>
+
+            <!-- Daily Energy Chart -->
+            <div class="chart-container">
+                <canvas id="dailyChart"></canvas>
+            </div>
+
+            <!-- CUMULATIVE IMPACT SECTION -->
+            <div class="cumulative-section">
+                <h3>📊 Cumulative Production Impact (Over Feeding Period)</h3>
+                
+                <div class="cumulative-kpis">
+                    <div class="cumulative-kpi">
+                        <div class="label">Total Energy Lost</div>
+                        <div class="value" id="cum_energy">0</div>
+                        <div class="subtext">Mcal over <span id="cum_days">180</span> days</div>
+                    </div>
+                    <div class="cumulative-kpi">
+                        <div class="label">Lost Weight Gain</div>
+                        <div class="value" id="cum_weight">0</div>
+                        <div class="subtext">kg (lbs)</div>
+                    </div>
+                    <div class="cumulative-kpi money-kpi">
+                        <div class="label">Opportunity Cost</div>
+                        <div class="value" id="cum_cost">$0</div>
+                        <div class="subtext">per head</div>
+                    </div>
+                    <div class="cumulative-kpi money-kpi">
+                        <div class="label">Per Day Average</div>
+                        <div class="value" id="cum_daily_cost">$0.00</div>
+                        <div class="subtext">lost revenue/day</div>
+                    </div>
+                </div>
+
+                <!-- Cumulative Chart -->
+                <div class="chart-container tall">
+                    <canvas id="cumulativeChart"></canvas>
+                </div>
+
+                <!-- The Logic Explanation -->
+                <div class="logic-box">
+                    <span class="logic-title">The "Cumulative Imbalance" Hypothesis</span>
+                    <p>
+                        While the daily detoxification cost of <strong><span id="txt_daily">0.000</span> Mcal</strong> represents only 
+                        <strong><span id="txt_pct">0.0</span>%</strong> of baseline maintenance energy, this burden is sustained continuously 
+                        throughout the feeding period. Over <strong><span id="txt_days">180</span> days</strong>, the cumulative energy deficit 
+                        reaches <strong><span id="txt_total">0.0</span> Mcal</strong>.
+                        <br><br>
+                        This energy is preferentially diverted from Net Energy for Gain (NEg) to cover the increased maintenance requirement. 
+                        At an average energy content of gain of <strong>5.0 Mcal/kg</strong> for finishing steers (NASEM 2016), this deficit 
+                        prevents the deposition of <strong><span id="txt_gain">0.0</span> kg (<span id="txt_gain_lb">0.0</span> lb)</strong> of tissue.
+                        <br><br>
+                        At current market prices of <strong>$<span id="txt_price">4.08</span>/kg</strong>, this represents an opportunity cost 
+                        of <strong>$<span id="txt_money">0.00</span> per head</strong>, or approximately <strong>$<span id="txt_daily_loss">0.00</span>/day</strong>.
+                        <br><br>
+                        <strong>Conclusion:</strong> Subclinical sulfur toxicity acts as a silent efficiency tax, altering energy partitioning 
+                        away from production and toward detoxification. For a 10,000-head feedlot, this can represent 
+                        <strong>$<span id="txt_lot_cost">0</span></strong> in lost revenue per finishing cycle.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Equation Display -->
+            <div class="equation-section">
+                <h4>Stoichiometric Calculation Path</h4>
+                <div id="equation-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- References -->
+    <div class="references">
+        <h3>Scientific References & Model Basis</h3>
+        <ul class="ref-list">
+            <li>
+                <strong>Hildebrandt, T. M., & Grieshaber, M. K. (2008).</strong> Three enzymatic activities catalyze the oxidation of sulfide to thiosulfate in mammalian and invertebrate mitochondria. <em>FEBS Journal</em>, 275(13), 3352-3361.
+                <span class="ref-note">Mitochondrial sulfide oxidation pathway</span>
+            </li>
+            <li>
+                <strong>Brouwer, E. (1965).</strong> Report of Sub-committee on Constants and Factors. <em>EAAP Publication</em>, 11, 441-443.
+                <span class="ref-note">Oxygen caloric equivalent: 4.89 kcal/L O₂</span>
+            </li>
+            <li>
+                <strong>Gould, D. H., et al. (1997).</strong> Sulfide-induced polioencephalomalacia in cattle. <em>Veterinary and Human Toxicology</em>, 39(2), 69-75.
+                <span class="ref-note">H₂S absorption kinetics, pH effects</span>
+            </li>
+            <li>
+                <strong>Kung, L., et al. (1998).</strong> Rumen microbial degradation of added taurine and urea. <em>Journal of Dairy Science</em>, 81(9), 2374-2382.
+                <span class="ref-note">Sulfate reduction rates: 30-90%</span>
+            </li>
+            <li>
+                <strong>Drewnoski, M. E., & Hansen, S. L. (2014).</strong> High-sulfur in beef cattle diets: a review. <em>Journal of Animal Science</em>, 92(9), 3763-3780.
+                <span class="ref-note">Comprehensive sulfur toxicity review</span>
+            </li>
+            <li>
+                <strong>Loneragan, G. H., et al. (2001).</strong> The magnitude and pattern of ruminal hydrogen sulfide production. <em>Journal of Veterinary Diagnostic Investigation</em>, 13(4), 310-317.
+                <span class="ref-note">Clinical thresholds: Total S > 0.4%, water SO₄ > 2000 mg/L</span>
+            </li>
+            <li>
+                <strong>NASEM. (2016).</strong> <em>Nutrient Requirements of Beef Cattle</em> (8th rev. ed.). Washington, DC: The National Academies Press.
+                <span class="ref-note">Base NEm: 0.077 × BW^0.75 Mcal/day; Energy content of gain: ~5.0 Mcal/kg</span>
+            </li>
+            <li>
+                <strong>Texas Water Development Board.</strong> Groundwater aquifer data. <em>https://www.twdb.texas.gov/groundwater/aquifer/</em>
+                <span class="ref-note">Texas water sulfate concentration ranges</span>
+            </li>
+        </ul>
+        
+        <div class="assumptions-box">
+            <strong>Model Assumptions:</strong>
+            <ul>
+                <li>Stoichiometry: H₂S + 2O₂ → SO₄²⁻ + 2H⁺ (complete oxidation pathway)</li>
+                <li>This represents a metabolic COST, not energy yield - no ATP captured from sulfide oxidation at toxic concentrations</li>
+                <li>Heat-to-NE conversion: Heat ÷ 0.70 = NE cost (accounts for 30% metabolic inefficiency)</li>
+                <li>Energy content of gain: 5.0 Mcal/kg (average for finishing steers, NASEM 2016)</li>
+                <li>Energy deficit is preferentially drawn from Net Energy for Gain (NEg), not additional feed intake</li>
+                <li>Model represents steady-state chronic exposure conditions, not acute toxicity episodes</li>
+                <li>Cumulative impacts assume consistent sulfur exposure throughout feeding period</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Physical Constants
+    const MW_S = 32.065;
+    const MW_SO4 = 96.066;
+    const S_IN_SO4 = MW_S / MW_SO4;
+    const MOL_VOL = 22.4;
+    const KCAL_PER_L_O2 = 4.89;
+    const NEM_COEFF = 0.077;
+    const HEAT_TO_NE = 0.70;
+    const NE_G_CONTENT = 5.0; // Mcal/kg - Energy content of gain (NASEM 2016)
+
+    let dailyChart = null;
+    let cumulativeChart = null;
+
+    function updateModel() {
+        // GET INPUTS
+        const bw = parseFloat(document.getElementById('bw').value);
+        const dmi = parseFloat(document.getElementById('dmi').value);
+        const feedS_pct = parseFloat(document.getElementById('feedS').value);
+        const waterS_conc = parseFloat(document.getElementById('waterS').value);
+        const waterIn = parseFloat(document.getElementById('waterIn').value);
+        const red_pct = parseFloat(document.getElementById('reduction').value);
+        const abs_pct = parseFloat(document.getElementById('abs').value);
+        const ox_pct = parseFloat(document.getElementById('ox').value);
+        const days_on_feed = parseFloat(document.getElementById('days_on_feed').value);
+        const live_price = parseFloat(document.getElementById('live_price').value);
+
+        // CALCULATE SULFUR FLOW
+        const feedS_g = dmi * (feedS_pct / 100) * 1000;
+        const waterSulfate_g = waterIn * (waterS_conc / 1000);
+        const waterS_g = waterSulfate_g * S_IN_SO4;
+        const totalS_g = feedS_g + waterS_g;
+        const totalS_dmi_pct = (totalS_g / (dmi * 1000)) * 100;
+
+        const rumenH2S_g = totalS_g * (red_pct / 100);
+        const absorbedH2S_g = rumenH2S_g * (abs_pct / 100);
+        const oxidizedS_g = absorbedH2S_g * (ox_pct / 100);
+
+        // STOICHIOMETRY
+        const mols_S = oxidizedS_g / MW_S;
+        const mols_O2 = mols_S * 2;
+        const liters_O2 = mols_O2 * MOL_VOL;
+        
+        // ENERGETICS - DAILY
+        const heat_kcal = liters_O2 * KCAL_PER_L_O2;
+        const heat_mcal_raw = heat_kcal / 1000;
+        const ne_cost_mcal = heat_mcal_raw / HEAT_TO_NE;
+
+        const mbw = Math.pow(bw, 0.75);
+        const base_nem = NEM_COEFF * mbw;
+        const total_nem = base_nem + ne_cost_mcal;
+        const pct_increase = (ne_cost_mcal / base_nem) * 100;
+
+        // CUMULATIVE IMPACT CALCULATIONS
+        const cumulative_energy_lost = ne_cost_mcal * days_on_feed;
+        const lost_weight_gain_kg = cumulative_energy_lost / NE_G_CONTENT;
+        const lost_weight_gain_lb = lost_weight_gain_kg * 2.205;
+        const opportunity_cost = lost_weight_gain_kg * live_price;
+        const daily_cost_avg = opportunity_cost / days_on_feed;
+        const lot_cost_10k = opportunity_cost * 10000;
+
+        // UPDATE UI - INPUTS
+        document.getElementById('val_bw').innerText = bw + " kg (" + (bw * 2.205).toFixed(0) + " lb)";
+        document.getElementById('val_dmi').innerText = dmi + " kg (" + (dmi * 2.205).toFixed(1) + " lb)";
+        document.getElementById('val_feedS').innerText = feedS_pct.toFixed(2) + "%";
+        document.getElementById('val_waterS').innerText = waterS_conc + " mg/L";
+        document.getElementById('val_waterIn').innerText = waterIn + " L (" + (waterIn * 0.264).toFixed(1) + " gal)";
+        document.getElementById('val_reduction').innerText = red_pct + "%";
+        document.getElementById('val_abs').innerText = abs_pct + "%";
+        document.getElementById('val_ox').innerText = ox_pct + "%";
+        document.getElementById('val_days').innerText = days_on_feed + " days";
+        document.getElementById('val_price').innerText = "$" + live_price.toFixed(2) + "/kg ($" + (live_price / 2.205).toFixed(2) + "/lb)";
+
+        // UPDATE UI - DAILY RESULTS
+        document.getElementById('res_totalS').innerText = totalS_g.toFixed(1);
+        document.getElementById('res_rumen').innerText = rumenH2S_g.toFixed(1);
+        document.getElementById('res_absorbed').innerText = absorbedH2S_g.toFixed(2);
+        document.getElementById('res_o2').innerText = liters_O2.toFixed(1);
+        document.getElementById('res_heat_raw').innerText = heat_mcal_raw.toFixed(3);
+        document.getElementById('res_heat').innerText = ne_cost_mcal.toFixed(3);
+        document.getElementById('res_base').innerText = base_nem.toFixed(2);
+        document.getElementById('res_total').innerText = total_nem.toFixed(2);
+        document.getElementById('res_pct').innerText = "+" + pct_increase.toFixed(1) + "%";
+
+        // UPDATE UI - CUMULATIVE RESULTS
+        document.getElementById('cum_days').innerText = days_on_feed;
+        document.getElementById('cum_energy').innerText = cumulative_energy_lost.toFixed(1);
+        document.getElementById('cum_weight').innerText = lost_weight_gain_kg.toFixed(1) + " kg (" + lost_weight_gain_lb.toFixed(1) + " lb)";
+        document.getElementById('cum_cost').innerText = "$" + opportunity_cost.toFixed(2);
+        document.getElementById('cum_daily_cost').innerText = "$" + daily_cost_avg.toFixed(2);
+
+        // UPDATE LOGIC TEXT
+        document.getElementById('txt_daily').innerText = ne_cost_mcal.toFixed(3);
+        document.getElementById('txt_pct').innerText = pct_increase.toFixed(1);
+        document.getElementById('txt_days').innerText = days_on_feed;
+        document.getElementById('txt_total').innerText = cumulative_energy_lost.toFixed(1);
+        document.getElementById('txt_gain').innerText = lost_weight_gain_kg.toFixed(1);
+        document.getElementById('txt_gain_lb').innerText = lost_weight_gain_lb.toFixed(1);
+        document.getElementById('txt_price').innerText = live_price.toFixed(2);
+        document.getElementById('txt_money').innerText = opportunity_cost.toFixed(2);
+        document.getElementById('txt_daily_loss').innerText = daily_cost_avg.toFixed(2);
+        document.getElementById('txt_lot_cost').innerText = lot_cost_10k.toLocaleString('en-US', {maximumFractionDigits: 0});
+
+        // TOXICITY WARNINGS
+        const warnBox = document.getElementById('warning-box');
+        let warnings = [];
+        let isCritical = false;
+        
+        if(totalS_dmi_pct > 0.50) {
+            warnings.push(`<strong>CRITICAL:</strong> Total dietary S is ${totalS_dmi_pct.toFixed(2)}% (max: 0.40%). High risk of polioencephalomalacia (PEM).`);
+            isCritical = true;
+        } else if(totalS_dmi_pct > 0.40) {
+            warnings.push(`<strong>WARNING:</strong> Total dietary S is ${totalS_dmi_pct.toFixed(2)}% (exceeds 0.40% threshold). Increased PEM risk.`);
+        }
+        
+        if(waterS_conc > 3000) {
+            warnings.push(`<strong>CRITICAL:</strong> Water sulfate is ${waterS_conc} mg/L. Severe toxicity risk - find alternative water source.`);
+            isCritical = true;
+        } else if(waterS_conc > 2000) {
+            warnings.push(`<strong>WARNING:</strong> Water sulfate is ${waterS_conc} mg/L (recommended max: 500 mg/L). High risk zone.`);
+        }
+        
+        if(absorbedH2S_g > 40) {
+            warnings.push(`<strong>WARNING:</strong> Absorbed H₂S burden is ${absorbedH2S_g.toFixed(1)} g/day - very high detoxification load.`);
+        }
+        
+        if(warnings.length > 0) {
+            warnBox.style.display = 'block';
+            warnBox.className = 'warning-box' + (isCritical ? ' critical' : '');
+            document.getElementById('warning-text').innerHTML = warnings.join("<br><br>");
+        } else {
+            warnBox.style.display = 'none';
+        }
+
+        // EQUATION DISPLAY
+        const eqHTML = `
+            <div class="math-step">
+                <strong>Step 1 - Total Intake:</strong> 
+                Feed: ${feedS_g.toFixed(1)}g + Water: ${waterS_g.toFixed(1)}g = 
+                <span class="math-res">${totalS_g.toFixed(1)} g S/day</span> 
+                (${totalS_dmi_pct.toFixed(2)}% of DMI)
+            </div>
+            <div class="math-step">
+                <strong>Step 2 - Rumen Reduction:</strong> 
+                ${totalS_g.toFixed(1)} g × ${red_pct}% = 
+                <span class="math-res">${rumenH2S_g.toFixed(1)} g H₂S produced</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 3 - Absorption:</strong> 
+                ${rumenH2S_g.toFixed(1)} g × ${abs_pct}% = 
+                <span class="math-res">${absorbedH2S_g.toFixed(2)} g H₂S absorbed</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 4 - Oxidation:</strong> 
+                ${absorbedH2S_g.toFixed(2)} g × ${ox_pct}% = 
+                <span class="math-res">${oxidizedS_g.toFixed(2)} g oxidized to SO₄²⁻</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 5 - O₂ Demand:</strong> 
+                (${oxidizedS_g.toFixed(2)} g ÷ 32.065) × 2 mol O₂/mol S × 22.4 L/mol = 
+                <span class="math-res">${liters_O2.toFixed(1)} L O₂/day</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 6 - Heat Production:</strong> 
+                ${liters_O2.toFixed(1)} L × 4.89 kcal/L = 
+                <span class="math-res">${heat_mcal_raw.toFixed(3)} Mcal heat/day</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 7 - Daily NE Cost:</strong> 
+                ${heat_mcal_raw.toFixed(3)} Mcal ÷ 0.70 (efficiency) = 
+                <span class="math-res">${ne_cost_mcal.toFixed(3)} Mcal NEm/day</span>
+                (+${pct_increase.toFixed(1)}% maintenance)
+            </div>
+            <div class="math-step">
+                <strong>Step 8 - Cumulative Cost:</strong> 
+                ${ne_cost_mcal.toFixed(3)} Mcal/day × ${days_on_feed} days = 
+                <span class="math-res">${cumulative_energy_lost.toFixed(1)} Mcal total lost</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 9 - Lost Production:</strong> 
+                ${cumulative_energy_lost.toFixed(1)} Mcal ÷ 5.0 Mcal/kg gain = 
+                <span class="math-res">${lost_weight_gain_kg.toFixed(1)} kg lost gain</span>
+            </div>
+            <div class="math-step">
+                <strong>Step 10 - Economic Impact:</strong> 
+                ${lost_weight_gain_kg.toFixed(1)} kg × $${live_price.toFixed(2)}/kg = 
+                <span class="math-res">$${opportunity_cost.toFixed(2)} opportunity cost</span>
+            </div>
+        `;
+        document.getElementById('equation-display').innerHTML = eqHTML;
+
+        // UPDATE CHARTS
+        updateDailyChart(base_nem, ne_cost_mcal, totalS_dmi_pct);
+        updateCumulativeChart(days_on_feed, ne_cost_mcal, lost_weight_gain_kg);
+    }
+
+    function updateDailyChart(base, cost, sulfur_pct) {
+        const ctx = document.getElementById('dailyChart').getContext('2d');
+        if (dailyChart) dailyChart.destroy();
+
+        const total = base + cost;
+        const pct = ((cost / base) * 100).toFixed(1);
+        
+        let titleColor = '#2c3e50';
+        if(sulfur_pct > 0.50) titleColor = '#c0392b';
+        else if(sulfur_pct > 0.40) titleColor = '#f39c12';
+
+        dailyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Baseline NEm', 'NEm with S-Tax'],
+                datasets: [
+                    { 
+                        label: 'Base Maintenance', 
+                        data: [base, base], 
+                        backgroundColor: '#3498db', 
+                        stack: '1' 
+                    },
+                    { 
+                        label: `Sulfide Detox (+${pct}%)`, 
+                        data: [0, cost], 
+                        backgroundColor: '#500000', 
+                        stack: '1' 
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Daily Net Energy for Maintenance (Mcal/day)',
+                        color: titleColor,
+                        font: { size: 13, weight: 'bold' }
+                    },
+                    legend: { position: 'bottom', labels: { font: { size: 10 } } }
+                },
+                scales: { 
+                    x: { 
+                        stacked: true, 
+                        title: { display: true, text: 'Energy (Mcal/day)', font: { size: 11 } } 
+                    }, 
+                    y: { stacked: true } 
+                }
+            }
+        });
+    }
+
+    function updateCumulativeChart(days, dailyCost, totalWeightLoss) {
+        const ctx = document.getElementById('cumulativeChart').getContext('2d');
+        if (cumulativeChart) cumulativeChart.destroy();
+
+        // Generate progressive data
+        let labels = [];
+        let energyData = [];
+        let weightData = [];
+
+        for(let d = 0; d <= days; d += Math.max(5, Math.floor(days/20))) {
+            labels.push('Day ' + d);
+            energyData.push((dailyCost * d).toFixed(2));
+            weightData.push((dailyCost * d / NE_G_CONTENT).toFixed(2));
+        }
+
+        cumulativeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Cumulative Energy Lost (Mcal)',
+                        data: energyData,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Lost Weight Gain (kg)',
+                        data: weightData,
+                        borderColor: '#500000',
+                        backgroundColor: 'rgba(80, 0, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: { 
+                        display: true, 
+                        text: 'Cumulative Impact Over Feeding Period', 
+                        font: { size: 14, weight: 'bold' },
+                        color: '#500000'
+                    },
+                    legend: { position: 'bottom', labels: { font: { size: 10 } } }
+                },
+                scales: {
+                    x: { 
+                        title: { display: true, text: 'Days on Feed', font: { size: 11 } }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Energy Lost (Mcal)', color: '#e74c3c', font: { size: 11 } },
+                        ticks: { color: '#e74c3c' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Weight Loss (kg)', color: '#500000', font: { size: 11 } },
+                        ticks: { color: '#500000' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize
+    updateModel();
+</script>
+</body>
+</html>
+
+

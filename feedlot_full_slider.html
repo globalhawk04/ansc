@@ -1,0 +1,419 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Feedlot Optimizer</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #2980b9; /* Blue */
+            --highlight: #e67e22; /* Orange for cattle inputs */
+            --success: #27ae60;
+            --danger: #c0392b;
+            --bg: #eceff1;
+            --panel-bg: #ffffff;
+        }
+        body { font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr 350px; gap: 20px; }
+        
+        /* Typography */
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { grid-column: 1 / -1; text-align: center; color: var(--primary); margin-bottom: 20px; }
+        .sub-header { font-size: 0.8rem; color: #7f8c8d; font-weight: normal; }
+
+        /* Cards */
+        .card { background: var(--panel-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: fit-content; }
+        
+        /* Ingredient Rows (Col 1) */
+        .ingredient-row { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap: 15px; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #eee; }
+        .ingredient-row:last-child { border-bottom: none; }
+        
+        /* Slider Styling */
+        .slider-wrapper { margin-bottom: 15px; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px; color: #444; }
+        .slider-val { color: var(--accent); font-weight: bold; background: #eef6fa; padding: 2px 8px; border-radius: 4px; }
+        .cattle-val { color: var(--highlight); background: #fef0e3; }
+        
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        input[type="range"].cattle-slider { accent-color: var(--highlight); }
+
+        /* The Ration Totals */
+        .ration-summary { background: #e8f6f3; padding: 15px; border-radius: 6px; margin-top: 10px; border: 1px solid #d1f2eb; }
+        .ration-metric { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }
+        .warn-text { color: var(--danger); font-size: 0.8rem; display: none; }
+
+        /* Results Panel (Right Side) */
+        .results-col { display: flex; flex-direction: column; gap: 15px; position: sticky; top: 20px; }
+        .profit-card { background: var(--primary); color: white; padding: 20px; border-radius: 8px; text-align: center; transition: background 0.3s ease; }
+        .profit-card.positive { background: var(--success); }
+        .profit-card.negative { background: var(--danger); }
+        
+        .big-number { font-size: 2.2rem; font-weight: 800; margin: 10px 0; }
+        .lbl { font-size: 0.8rem; text-transform: uppercase; opacity: 0.8; }
+
+        .analysis-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        
+        @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <h1>🐄 Dynamic Feedlot Simulator</h1>
+
+    <div class="container">
+
+        <!-- COLUMN 1: RATION BUILDER -->
+        <div class="card">
+            <h2>
+                1. Feed Ration Mixer 
+                <span class="sub-header">Build your diet</span>
+            </h2>
+
+            <!-- Corn -->
+            <div class="ingredient-row">
+                <div>
+                    <label>Corn ($/bu)</label>
+                    <input type="range" id="price_corn_bu" min="3.00" max="9.00" step="0.10" value="5.50" oninput="updateFeed()">
+                    <div style="font-size:0.75rem; color:#888;">Current: $<span id="lbl_corn_bu">5.50</span></div>
+                </div>
+                <div>
+                    <label>Include %</label>
+                    <input type="range" id="pct_corn" class="pct-slider" min="0" max="100" step="5" value="60" oninput="updateFeed()">
+                    <span class="slider-val" id="lbl_pct_corn">60%</span>
+                </div>
+                <div>
+                    <label>Cost/Ton</label>
+                    <div id="cost_corn_ton" style="font-size:0.85rem; color:#555;">$196</div>
+                </div>
+            </div>
+
+            <!-- Distillers (DDGS) -->
+            <div class="ingredient-row">
+                <div>
+                    <label>DDGS ($/ton)</label>
+                    <input type="range" id="price_ddgs" min="100" max="400" step="5" value="220" oninput="updateFeed()">
+                    <div style="font-size:0.75rem; color:#888;">Current: $<span id="lbl_ddgs">220</span></div>
+                </div>
+                <div>
+                    <label>Include %</label>
+                    <input type="range" id="pct_ddgs" class="pct-slider" min="0" max="100" step="5" value="20" oninput="updateFeed()">
+                    <span class="slider-val" id="lbl_pct_ddgs">20%</span>
+                </div>
+                <div>
+                    <label>Cost/Ton</label>
+                    <div id="cost_ddgs_ton" style="font-size:0.85rem; color:#555;">$220</div>
+                </div>
+            </div>
+
+            <!-- Silage/Roughage -->
+            <div class="ingredient-row">
+                <div>
+                    <label>Silage/Hay ($/ton)</label>
+                    <input type="range" id="price_silage" min="30" max="250" step="5" value="55" oninput="updateFeed()">
+                    <div style="font-size:0.75rem; color:#888;">Current: $<span id="lbl_silage">55</span></div>
+                </div>
+                <div>
+                    <label>Include %</label>
+                    <input type="range" id="pct_silage" class="pct-slider" min="0" max="100" step="5" value="15" oninput="updateFeed()">
+                    <span class="slider-val" id="lbl_pct_silage">15%</span>
+                </div>
+                <div>
+                    <label>Cost/Ton</label>
+                    <div id="cost_silage_ton" style="font-size:0.85rem; color:#555;">$55</div>
+                </div>
+            </div>
+
+            <!-- Supplement -->
+            <div class="ingredient-row">
+                <div>
+                    <label>Supp ($/ton)</label>
+                    <input type="range" id="price_supp" min="200" max="800" step="10" value="450" oninput="updateFeed()">
+                    <div style="font-size:0.75rem; color:#888;">Current: $<span id="lbl_supp">450</span></div>
+                </div>
+                <div>
+                    <label>Include %</label>
+                    <input type="range" id="pct_supp" class="pct-slider" min="0" max="100" step="1" value="5" oninput="updateFeed()">
+                    <span class="slider-val" id="lbl_pct_supp">5%</span>
+                </div>
+                <div>
+                    <label>Cost/Ton</label>
+                    <div id="cost_supp_ton" style="font-size:0.85rem; color:#555;">$450</div>
+                </div>
+            </div>
+
+            <div class="ration-summary">
+                <div class="ration-metric">
+                    <span>Blended Ration Cost:</span>
+                    <span id="final_ration_cost" style="color:#2980b9; font-size:1.2rem;">$0.00 / ton</span>
+                </div>
+                <div class="ration-metric" style="font-weight:normal; font-size:0.9rem;">
+                    <span>Total Percentage:</span>
+                    <span id="total_pct_display">100%</span>
+                </div>
+                <div id="pct_warning" class="warn-text">⚠️ Warning: Ingredients must sum to 100%</div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: CATTLE PARAMETERS (ALL SLIDERS) -->
+        <div class="card">
+            <h2>2. Cattle & Performance</h2>
+            
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Purchase Price ($/cwt)</label>
+                    <span class="slider-val cattle-val" id="lbl_cattle_price">$240</span>
+                </div>
+                <input type="range" id="cattle_price" class="cattle-slider" min="150" max="350" step="1" value="240" oninput="calculate()">
+            </div>
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Sale Price ($/cwt)</label>
+                    <span class="slider-val cattle-val" id="lbl_sale_price">$185</span>
+                </div>
+                <input type="range" id="sale_price" class="cattle-slider" min="140" max="260" step="1" value="185" oninput="calculate()">
+            </div>
+
+            <hr style="border:0; border-top:1px solid #eee; margin: 15px 0;">
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Avg Daily Gain (ADG)</label>
+                    <span class="slider-val cattle-val" id="lbl_adg">3.8 lbs</span>
+                </div>
+                <input type="range" id="adg" class="cattle-slider" min="1.5" max="5.5" step="0.1" value="3.8" oninput="calculate()">
+            </div>
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Feed Conversion (F:G)</label>
+                    <span class="slider-val cattle-val" id="lbl_fcr">6.5</span>
+                </div>
+                <input type="range" id="fcr" class="cattle-slider" min="4.0" max="12.0" step="0.1" value="6.5" oninput="calculate()">
+                <small style="color:#888; font-size:0.75rem;">Lbs of feed to gain 1 lb</small>
+            </div>
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>In Weight</label>
+                    <span class="slider-val cattle-val" id="lbl_in_weight">650 lbs</span>
+                </div>
+                <input type="range" id="in_weight" class="cattle-slider" min="300" max="1000" step="10" value="650" oninput="calculate()">
+            </div>
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Target Out Weight</label>
+                    <span class="slider-val cattle-val" id="lbl_out_weight">1400 lbs</span>
+                </div>
+                <input type="range" id="out_weight" class="cattle-slider" min="1000" max="1800" step="10" value="1400" oninput="calculate()">
+            </div>
+
+            <hr style="border:0; border-top:1px solid #eee; margin: 15px 0;">
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Yardage Cost</label>
+                    <span class="slider-val cattle-val" id="lbl_yardage">$0.40 /day</span>
+                </div>
+                <input type="range" id="yardage" class="cattle-slider" min="0.10" max="1.00" step="0.05" value="0.40" oninput="calculate()">
+            </div>
+
+            <div class="slider-wrapper">
+                <div class="slider-header">
+                    <label>Interest Rate</label>
+                    <span class="slider-val cattle-val" id="lbl_interest">8.0%</span>
+                </div>
+                <input type="range" id="interest" class="cattle-slider" min="0" max="15" step="0.25" value="8.0" oninput="calculate()">
+            </div>
+
+        </div>
+
+        <!-- COLUMN 3: RESULTS HUD -->
+        <div class="results-col">
+            
+            <div class="profit-card" id="main_card">
+                <div class="lbl">Net Profit Per Head</div>
+                <div class="big-number" id="res_profit">$0.00</div>
+                <div class="lbl" id="res_roi">ROI: 0%</div>
+            </div>
+
+            <div class="card">
+                <h3>Analysis Metrics</h3>
+                
+                <div class="analysis-row">
+                    <span>Days on Feed</span>
+                    <strong id="res_days">0 days</strong>
+                </div>
+                <div class="analysis-row">
+                    <span>Cost of Gain (Total)</span>
+                    <strong id="res_cog">$0.00 / lb</strong>
+                </div>
+                <div class="analysis-row">
+                    <span>Feed Cost Only</span>
+                    <strong id="res_cog_feed" style="color:#2980b9;">$0.00 / lb</strong>
+                </div>
+                <div class="analysis-row">
+                    <span>Break Even Sale</span>
+                    <strong id="res_be_sale">$0.00 / cwt</strong>
+                </div>
+                <div class="analysis-row">
+                    <span>Break Even Purchase</span>
+                    <strong id="res_be_buy">$0.00 / cwt</strong>
+                </div>
+            </div>
+
+            <div class="card" style="background:#fff3cd; border:1px solid #ffeeba;">
+                <h4 style="margin:0 0 10px 0; color:#856404;">💡 Strategy Tip</h4>
+                <p style="font-size:0.85rem; margin:0; color:#856404;">
+                    <strong>Cheaper feed isn't always better.</strong> <br>
+                    Try lowering ration cost (Col 1), but then slide ADG down and FCR up (Col 2) to see if the performance loss eats up your savings.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Feed Logic ---
+        let currentRationCostPerTon = 0;
+
+        function updateFeed() {
+            // Get Prices
+            const price_corn_bu = parseFloat(document.getElementById('price_corn_bu').value);
+            const price_ddgs = parseFloat(document.getElementById('price_ddgs').value);
+            const price_silage = parseFloat(document.getElementById('price_silage').value);
+            const price_supp = parseFloat(document.getElementById('price_supp').value);
+
+            // Get Percentages
+            const pct_corn = parseFloat(document.getElementById('pct_corn').value);
+            const pct_ddgs = parseFloat(document.getElementById('pct_ddgs').value);
+            const pct_silage = parseFloat(document.getElementById('pct_silage').value);
+            const pct_supp = parseFloat(document.getElementById('pct_supp').value);
+
+            // Update Labels
+            document.getElementById('lbl_corn_bu').innerText = price_corn_bu.toFixed(2);
+            document.getElementById('lbl_ddgs').innerText = price_ddgs;
+            document.getElementById('lbl_silage').innerText = price_silage;
+            document.getElementById('lbl_supp').innerText = price_supp;
+
+            document.getElementById('lbl_pct_corn').innerText = pct_corn + "%";
+            document.getElementById('lbl_pct_ddgs').innerText = pct_ddgs + "%";
+            document.getElementById('lbl_pct_silage').innerText = pct_silage + "%";
+            document.getElementById('lbl_pct_supp').innerText = pct_supp + "%";
+
+            // Convert Corn Bu to Ton (Assume 56lbs/bu -> 35.71 bu/ton)
+            const CORN_BU_PER_TON = 35.71; 
+            const price_corn_ton = price_corn_bu * CORN_BU_PER_TON;
+            document.getElementById('cost_corn_ton').innerText = "$" + Math.round(price_corn_ton);
+
+            // Validate 100%
+            const total_pct = pct_corn + pct_ddgs + pct_silage + pct_supp;
+            const pct_display = document.getElementById('total_pct_display');
+            const warn = document.getElementById('pct_warning');
+            
+            pct_display.innerText = total_pct + "%";
+            
+            if(total_pct !== 100) {
+                pct_display.style.color = "#c0392b";
+                warn.style.display = "block";
+            } else {
+                pct_display.style.color = "#27ae60";
+                warn.style.display = "none";
+            }
+
+            // Weighted Average Cost
+            const cost_corn = price_corn_ton * (pct_corn / 100);
+            const cost_ddgs = price_ddgs * (pct_ddgs / 100);
+            const cost_silage = price_silage * (pct_silage / 100);
+            const cost_supp = price_supp * (pct_supp / 100);
+
+            currentRationCostPerTon = cost_corn + cost_ddgs + cost_silage + cost_supp;
+
+            document.getElementById('final_ration_cost').innerText = "$" + currentRationCostPerTon.toFixed(2) + " / ton";
+
+            calculate();
+        }
+
+        // --- 2. Profit Logic ---
+        function calculate() {
+            // Get Inputs (All Sliders now)
+            const cattle_price_cwt = parseFloat(document.getElementById('cattle_price').value);
+            const sale_price_cwt = parseFloat(document.getElementById('sale_price').value);
+            const adg = parseFloat(document.getElementById('adg').value);
+            const fcr = parseFloat(document.getElementById('fcr').value);
+            const in_weight = parseFloat(document.getElementById('in_weight').value);
+            const out_weight = parseFloat(document.getElementById('out_weight').value);
+            const yardage = parseFloat(document.getElementById('yardage').value);
+            const interest_rate = parseFloat(document.getElementById('interest').value);
+
+            // Update Cattle Slider Labels (Dynamic Readout)
+            document.getElementById('lbl_cattle_price').innerText = "$" + cattle_price_cwt;
+            document.getElementById('lbl_sale_price').innerText = "$" + sale_price_cwt;
+            document.getElementById('lbl_adg').innerText = adg + " lbs";
+            document.getElementById('lbl_fcr').innerText = fcr;
+            document.getElementById('lbl_in_weight').innerText = in_weight + " lbs";
+            document.getElementById('lbl_out_weight').innerText = out_weight + " lbs";
+            document.getElementById('lbl_yardage').innerText = "$" + yardage.toFixed(2) + " /day";
+            document.getElementById('lbl_interest').innerText = interest_rate + "%";
+
+            // Calculations
+            const total_gain = out_weight - in_weight;
+            if (total_gain <= 0) {
+                // Prevent weird math if out weight < in weight
+                document.getElementById('res_profit').innerText = "Weight Error";
+                return;
+            }
+            
+            const days_on_feed = total_gain / adg;
+
+            // Feed Cost
+            const total_feed_lbs = total_gain * fcr;
+            const feed_cost_total = total_feed_lbs * (currentRationCostPerTon / 2000);
+
+            // Other Costs
+            const cattle_cost = (cattle_price_cwt / 100) * in_weight;
+            const yardage_cost = days_on_feed * yardage;
+            const vet_cost = 25; 
+            const interest_cost = (cattle_cost + (feed_cost_total/2)) * (interest_rate/100) * (days_on_feed/365);
+
+            const total_cost = cattle_cost + feed_cost_total + yardage_cost + vet_cost + interest_cost;
+            const revenue = (sale_price_cwt / 100) * out_weight;
+            const profit = revenue - total_cost;
+            const roi = (profit / total_cost) * 100;
+
+            // Metrics
+            const cog_total = (total_cost - cattle_cost) / total_gain;
+            const cog_feed = feed_cost_total / total_gain;
+            const be_sale = (total_cost / out_weight) * 100;
+            const be_buy = ((revenue - (total_cost - cattle_cost)) / in_weight) * 100;
+
+            // --- Update UI ---
+            const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+            const elProfit = document.getElementById('res_profit');
+            const elCard = document.getElementById('main_card');
+            
+            elProfit.innerText = fmt.format(profit);
+            document.getElementById('res_roi').innerText = "ROI: " + roi.toFixed(1) + "%";
+            document.getElementById('res_days').innerText = Math.round(days_on_feed) + " days";
+
+            if(profit >= 0) {
+                elCard.className = "profit-card positive";
+            } else {
+                elCard.className = "profit-card negative";
+            }
+
+            document.getElementById('res_cog').innerText = fmt.format(cog_total) + " / lb";
+            document.getElementById('res_cog_feed').innerText = fmt.format(cog_feed) + " / lb";
+            document.getElementById('res_be_sale').innerText = fmt.format(be_sale);
+            document.getElementById('res_be_buy').innerText = fmt.format(be_buy);
+        }
+
+        // Initialize
+        updateFeed();
+    </script>
+</body>
+</html>
+    
